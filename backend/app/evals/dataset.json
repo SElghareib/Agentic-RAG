@@ -1,0 +1,20 @@
+[
+  {
+    "id": "q1",
+    "query": "What is hybrid search and how does it work?",
+    "expected_answer": "Hybrid search combines vector similarity search with keyword-based BM25 search using Reciprocal Rank Fusion (RRF) to balance semantic matching with exact term matching.",
+    "ground_truth_chunk_ids": []
+  },
+  {
+    "id": "q2",
+    "query": "What embedding model is used for document vectors?",
+    "expected_answer": "The system uses BGE-M3 (BAAI General Embedding) which supports dense retrieval, multi-lingual text, and long context up to 8192 tokens.",
+    "ground_truth_chunk_ids": []
+  },
+  {
+    "id": "q3",
+    "query": "How does the system handle multi-turn conversations?",
+    "expected_answer": "The system uses query rewriting to convert follow-up questions into standalone queries by using conversation history and an LLM to resolve pronoun references.",
+    "ground_truth_chunk_ids": []
+  }
+]

@@ -1,0 +1,149 @@
+version: '3.8'
+
+services:
+  # PostgreSQL with pgvector extension
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: rag-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER:-raguser}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-ragpassword}
+      POSTGRES_DB: ${DB_NAME:-ragdb}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-raguser} -d ${DB_NAME:-ragdb}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rag-network
+
+  # Redis for Celery broker and backend
+  redis:
+    image: redis:7-alpine
+    container_name: rag-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rag-network
+
+  # Jaeger for distributed tracing (Observability)
+  jaeger:
+    image: jaegertracing/all-in-one:1.54
+    container_name: rag-jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+    networks:
+      - rag-network
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: rag-backend
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-raguser}
+      DB_PASSWORD: ${DB_PASSWORD:-ragpassword}
+      DB_NAME: ${DB_NAME:-ragdb}
+      DATABASE_URL: postgresql+asyncpg://${DB_USER:-raguser}:${DB_PASSWORD:-ragpassword}@postgres:5432/${DB_NAME:-ragdb}
+      REDIS_URL: redis://redis:6379/0
+      OTEL_EXPORTER_ENDPOINT: http://jaeger:4317
+      OTEL_SERVICE_NAME: rag-backend
+      ENVIRONMENT: development
+      INSTANCE_ID: backend-1
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-BAAI/bge-m3}
+      LLM_PROVIDER: dashscope
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    volumes:
+      - ./backend:/app
+    networks:
+      - rag-network
+    command: >
+      bash -c "alembic upgrade head && 
+               uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  # Celery Worker for async tasks
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: rag-celery-worker
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-raguser}
+      DB_PASSWORD: ${DB_PASSWORD:-ragpassword}
+      DB_NAME: ${DB_NAME:-ragdb}
+      DATABASE_URL: postgresql+asyncpg://${DB_USER:-raguser}:${DB_PASSWORD:-ragpassword}@postgres:5432/${DB_NAME:-ragdb}
+      REDIS_URL: redis://redis:6379/0
+      OTEL_EXPORTER_ENDPOINT: http://jaeger:4317
+      OTEL_SERVICE_NAME: rag-celery-worker
+      ENVIRONMENT: development
+      INSTANCE_ID: celery-worker-1
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-BAAI/bge-m3}
+      LLM_PROVIDER: dashscope
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    networks:
+      - rag-network
+    command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=2
+
+  # Frontend Next.js
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: rag-frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_WS_URL: ws://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - rag-network
+    command: npm run dev
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  rag-network:
+    driver: bridge

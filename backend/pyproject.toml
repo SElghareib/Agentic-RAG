@@ -1,0 +1,90 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rag-backend"
+version = "0.1.0"
+description = "Production-grade RAG system with hybrid search, Celery tasks, and OpenTelemetry"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    # Web Framework
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "python-multipart>=0.0.6",
+    
+    # Database & ORM
+    "sqlalchemy[asyncio]>=2.0.25",
+    "asyncpg>=0.29.0",
+    "alembic>=1.13.1",
+    "pgvector>=0.2.4",
+    
+    # Task Queue
+    "celery[redis]>=5.3.6",
+    
+    # Observability
+    "opentelemetry-api>=1.22.0",
+    "opentelemetry-sdk>=1.22.0",
+    "opentelemetry-instrumentation-fastapi>=0.43b0",
+    "opentelemetry-instrumentation-sqlalchemy>=0.43b0",
+    "opentelemetry-instrumentation-redis>=0.43b0",
+    "opentelemetry-exporter-otlp>=1.22.0",
+    
+    # Security & Auth
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "slowapi>=0.1.9",
+    
+    # Document Processing
+    "pypdf>=4.0.1",
+    "unstructured[pdf]>=0.12.0",
+    "markdown>=3.5.2",
+    "python-docx>=1.1.0",
+    
+    # Embeddings (Local)
+    "sentence-transformers>=2.3.1",
+    "torch>=2.1.0",
+    
+    # LLM Client
+    "dashscope>=1.14.1",
+    "httpx>=0.26.0",
+    
+    # Validation & Settings
+    "pydantic>=2.5.3",
+    "pydantic-settings>=2.1.0",
+    
+    # Utilities
+    "aiofiles>=23.2.1",
+    "tenacity>=8.2.3",
+    "numpy>=1.26.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.4",
+    "pytest-asyncio>=0.23.3",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.1.13",
+    "black>=24.1.0",
+    "httpx>=0.26.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-v --tb=short"

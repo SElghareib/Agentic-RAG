@@ -1,0 +1,49 @@
+```gitignore
+# Compiled Python files
+*.pyc
+__pycache__/
+
+# Dependencies
+venv/
+.venv/
+node_modules/
+
+# Logs
+*.log
+
+# Environment variables
+.env
+.env.local
+*.env.*
+
+# Coverage reports
+.coverage
+coverage/
+htmlcov/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
+target/
+*.class
+*.o
+*.obj
+*.so
+*.dll
+*.exe
+
+# Cache directories
+.mypy_cache/
+.pytest_cache/
+.gradle/
+```
